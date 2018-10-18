@@ -1,3 +1,6 @@
 aiohttp==3.4.4
 aiodns==1.1.1
+aioredis==1.1.0
+asynctest==0.12.2
 cchardet==2.1.4
+msgpack==0.5.6
