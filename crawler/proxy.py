@@ -1,6 +1,5 @@
 import aiohttp
 import asyncio
-import random
 import re
 
 
@@ -45,7 +44,7 @@ class ProxyProvider(object):
 
     async def pick(self):
         async with self._redis as redis:
-            return await self._redis.spick(b'proxies')
+            return await redis.spick(b'proxies')
 
     async def update_once(self):
         content = await self._fetch_proxy_file()
@@ -53,5 +52,8 @@ class ProxyProvider(object):
 
     async def update_periodically(self, sleep_secs=1200):
         while True:
-            await self.update_once()
-            await asyncio.sleep(sleep_secs)
+            try:
+                await self.update_once()
+                await asyncio.sleep(sleep_secs)
+            except asyncio.CancelledError:
+                break
