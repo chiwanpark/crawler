@@ -27,6 +27,13 @@ class RedisTest(asynctest.TestCase):
             l1, l2 = await asyncio.gather(m1.get_leader(), m2.get_leader())
             self.assertTrue(l1 == l2)
 
+    async def test_leader_resignation(self):
+        async with RedisManager(self._host, self._port, b'worker1') as m1:
+            await m1.resign_leader()
+            self.assertFalse(await m1.is_leader())
+            async with RedisManager(self._host, self._port, b'worker2') as m2:
+                self.assertTrue(await m2.is_leader())
+
     async def test_set_methods(self):
         async with RedisManager(self._host, self._port, b'worker1') as m:
             m.sadd(b'set_test', b'1')

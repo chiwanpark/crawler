@@ -38,6 +38,10 @@ class RedisManager(object):
     def get_leader(self):
         return self._client.get(b'LEADER')
 
+    async def resign_leader(self):
+        if await self.is_leader():
+            return await self._client.delete(b'LEADER')
+
     async def is_leader(self):
         return (await self.get_leader()) == self._worker
 
