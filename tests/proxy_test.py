@@ -1,6 +1,7 @@
 import asynctest
 import aioredis
 import os
+import time
 from crawler.proxy import ProxyProvider
 from crawler.redis import RedisManager
 
@@ -24,5 +25,13 @@ class ProxyProviderTest(asynctest.TestCase):
         picked = await proxies.pick()
 
         self.assertTrue(picked is not None)
-        print(picked)
 
+    async def test_task_accept(self):
+        task = {'task': 'proxy_update', 'update_time': time.time()}
+        async with self._redis as redis:
+            await redis.qpush(b'TASK_QUEUE', task)
+
+        proxies = ProxyProvider(self._redis)
+        async with self._redis as redis:
+            task = await redis.qpop(b'TASK_QUEUE')
+        self.assertTrue(proxies.accept(task))

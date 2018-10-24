@@ -1,5 +1,5 @@
 import aiohttp
-import asyncio
+import time
 import re
 
 
@@ -50,10 +50,11 @@ class ProxyProvider(object):
         content = await self._fetch_proxy_file()
         await self._parse_proxy_list(content)
 
-    async def update_periodically(self, sleep_secs=1200):
-        while True:
-            try:
-                await self.update_once()
-                await asyncio.sleep(sleep_secs)
-            except asyncio.CancelledError:
-                break
+    def accept(self, task):
+        return task['task'] == 'proxy_update' and task['update_time'] <= time.time()
+
+    async def do(self, task):
+        assert self.accept(task)
+        await self.update_once(self)
+
+        return [{'task': 'proxy_update', 'update_time': time.time() + 1500}]

@@ -93,3 +93,9 @@ class RedisManager(object):
         tmp_key = '{}_{}'.format(key, self._worker)
         packed = self._pack(value, use_msgpack)
         return self._client.lrem(tmp_key, 1, packed)
+
+    def qcancel(self, key, value, use_msgpack=True):
+        tmp_key = '{}_{}'.format(key, self._worker)
+        packed = self._pack(value, use_msgpack)
+        futs = [self._client.lrem(tmp_key, 1, packed), self._client.rpush(key, packed)]
+        return asyncio.gather(*futs)
