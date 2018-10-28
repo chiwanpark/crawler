@@ -1,10 +1,13 @@
 import aiohttp
 import time
 import re
+from crawler.logging import LogMixin
 
 
-class ProxyProvider(object):
+class ProxyProvider(LogMixin):
     def __init__(self, redis):
+        super(ProxyProvider, self).__init__()
+
         self._proxy_list_url = 'http://spys.me/proxy.txt'
         self._proxy_pattern = re.compile(
             '(?P<addr>[0-9]{1,3}.[0-9]{1,3}.[0-9]{1,3}.[0-9]{1,3}:[0-9]{1,5}) (?P<option>.+)')
@@ -34,13 +37,17 @@ class ProxyProvider(object):
         async with self._redis as redis:
             proxies = [self._parse_proxy_line(line.strip()) for line in lines[4:]]
             await redis.sadd(b'proxies', *proxies)
+        self.log_info('Proxy list is updated.')
 
     async def _fetch_proxy_file(self):
+        self.log_info('Retrieve proxy list from %s', self._proxy_list_url)
         async with aiohttp.ClientSession() as session:
             async with session.get(self._proxy_list_url) as res:
                 if res.status != 200:
                     return None
-                return await res.text()
+                content = await res.text()
+                self.log_info('Proxy list is downloaded.')
+                return content
 
     async def pick(self):
         async with self._redis as redis:

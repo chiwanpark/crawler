@@ -1,13 +1,16 @@
 import asyncio
 import functools
 import signal
+from crawler.logging import LogMixin
 from crawler.redis import RedisManager
 from crawler.proxy import ProxyProvider
 from crawler.util import env
 
 
-class Runner(object):
+class Runner(LogMixin):
     def __init__(self, loop):
+        super(Runner, self).__init__()
+
         self._worker = env('WORKER', 'WORKER_NAME_NOT_GIVEN')
         self._loop = loop
 
@@ -33,6 +36,7 @@ class Runner(object):
                 return
 
         self._apps.append(ProxyProvider(self._redis))
+        self.log_info('Add proxy update handler')
 
     def _init_apps(self):
         self._apps = []
@@ -45,13 +49,16 @@ class Runner(object):
         return None
 
     async def run(self):
+        self.log_info('Initialize a runner on Worker %s', self._worker)
         self._init_apps()
 
         queue_empty = False
         while True:
             try:
                 if queue_empty:
-                    await asyncio.sleep(int(env('SLEEP_QUEUE_EMPTY', 60)))
+                    wait_secs = int(env('SLEEP_QUEUE_EMPTY', 60))
+                    self.log_info('Wait for %d seconds because the task queue is empty.', wait_secs)
+                    await asyncio.sleep(wait_secs)
                     queue_empty = False
 
                 async with self._redis as redis:
@@ -73,4 +80,5 @@ class Runner(object):
                     async with self._redis as redis:
                         await redis.qpush(b'TASK_QUEUE', children)
             except asyncio.CancelledError:
+                self.log_info('Receive a cancel request (worker: %s)', self._worker)
                 break
